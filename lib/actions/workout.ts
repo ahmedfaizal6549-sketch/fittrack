@@ -9,13 +9,18 @@ export async function seedWorkoutPlan() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  // Check if plan already exists with the current name — if not, wipe and re-seed
   const { data: existing } = await supabase
     .from('workout_plans')
-    .select('id')
+    .select('id, name')
     .eq('user_id', user.id)
     .limit(1)
 
-  if (existing && existing.length > 0) return existing[0].id
+  if (existing && existing.length > 0) {
+    if (existing[0].name === BEGINNER_PLAN.name) return existing[0].id
+    // Plan name changed — delete old plan and re-seed
+    await supabase.from('workout_plans').delete().eq('user_id', user.id)
+  }
 
   const { data: plan } = await supabase
     .from('workout_plans')
