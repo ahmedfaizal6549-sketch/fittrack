@@ -9,7 +9,12 @@ export async function signIn(formData: FormData) {
   const password = formData.get('password') as string
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { error: error.message }
+  if (error) {
+    if (error.message.toLowerCase().includes('email not confirmed')) {
+      return { error: 'Please confirm your email first — check your inbox, or ask admin to disable email confirmation in Supabase.' }
+    }
+    return { error: error.message }
+  }
   redirect('/')
 }
 
@@ -21,6 +26,11 @@ export async function signUp(formData: FormData) {
 
   const { data, error } = await supabase.auth.signUp({ email, password })
   if (error) return { error: error.message }
+
+  // If session is null, Supabase requires email confirmation
+  if (!data.session) {
+    return { error: 'CHECK_EMAIL' }
+  }
 
   if (data.user) {
     await supabase.from('user_profiles').upsert({
